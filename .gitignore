@@ -35,3 +35,6 @@ secrets/
 .mypy_cache/
 pip-wheel-metadata/
 __pypackages__/
+
+web/
+.web/
