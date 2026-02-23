@@ -1,5 +1,5 @@
 # Kourae-net
----------
+
 Kourae-net es una plantilla de Minio + Postgresql, más una serie de soluciones a partir de esas dos: auth crudo, streaming, anti-payloads, etc. El nombre se lo puse así porque no se me ocurrió otro, lo cambiaré después.
 
 Resumen
