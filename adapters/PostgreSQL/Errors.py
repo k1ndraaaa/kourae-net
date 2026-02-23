@@ -1,4 +1,4 @@
 from native.EnvManager.Errors import *
 
-class PostgresClientBaseError(BaseError): pass
-class PostgresClientError(PostgresClientBaseError): pass
+class _PostgresClientBaseError(BaseError): pass
+class PostgresClientError(_PostgresClientBaseError): pass

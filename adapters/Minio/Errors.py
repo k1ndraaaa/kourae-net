@@ -1,4 +1,4 @@
 from native.EnvManager.Errors import *
 
-class MinioBaseError(BaseError): pass
-class MinioError(MinioBaseError): pass
+class _MinioClientBaseError(BaseError): pass
+class MinioClientError(_MinioClientBaseError): pass

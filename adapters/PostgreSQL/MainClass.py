@@ -12,36 +12,48 @@ class PostgresClient:
         host:str, 
         port:int,
         user:str,
-        password:str
+        password:str,
+        min_connections: int = 1,
+        max_connections: int = 3
     ):
-        self.my_relative_path = Path(__file__).resolve().parent.relative_to(root_path)
-        self.my_full_path = root_str_path / self.my_relative_path
-        self.env = EnvManager().load_vars_from_env(self.my_full_path / ".env")
-        self.db = psycopg2.pool.ThreadedConnectionPool(
-            1, 
-            10,
-            dbname=str(
-                self.env.get("database")
-            ),
-            user=user,
-            password=password,
-            host=host,
-            port=port
-        )
+        try:
+            self.my_relative_path = Path(__file__).resolve().parent.relative_to(root_path)
+            self.my_full_path = root_str_path / self.my_relative_path
+            self.env = EnvManager().load_vars_from_env(self.my_full_path / ".env")
+        except Exception as e:
+            raise ClassConstructionError(e) from e
+        try:
+            self.client = psycopg2.pool.ThreadedConnectionPool(
+                min_connections,
+                max_connections,
+                dbname=str(
+                    self.env.get("database")
+                ),
+                user=user,
+                password=password,
+                host=host,
+                port=port
+            )
+        except Exception as e:
+            raise AdapterError(e) from e
     
-    def metainf(self):
-        meta = {}
-        for k, v in self.__dict__.items():
-            meta[k] = v
-        return meta
-    
+    def healthcheck(self) -> bool:
+        try:
+            with self.get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1;")
+                    cur.fetchone()
+            return True
+        except Exception as e:
+            raise AdapterError(f"PostgreSQL no responde: {e}") from e
+        
     @contextmanager
     def get_conn(self):
-        conn = self.db.getconn()
+        conn = self.client.getconn()
         try:
             yield conn
         finally:
-            self.db.putconn(conn)
+            self.client.putconn(conn)
     
     def query(
         self, 
@@ -62,7 +74,7 @@ class PostgresClient:
                     return result
             except Exception as e:
                 conn.rollback()
-                raise PostgresClientError(e)
+                raise PostgresClientError(e) from e
 
     def _fetch_one_value(self, query: str, params: tuple):
         result = self.query(

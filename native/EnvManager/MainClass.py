@@ -4,7 +4,7 @@ from native.EnvManager.Errors import *
 from pathlib import Path
 import os, importlib, sys
 
-root_str_path = "this_path"
+root_str_path = "../kourae-net/"
 root_path = Path(root_str_path)
 
 class EnvManager:
@@ -12,11 +12,13 @@ class EnvManager:
         self
     ):
         pass
+    #posiblemente elimine esta función.
     def metainf(self):
         meta = {}
         for k, v in self.__dict__.items():
             meta[k] = v
         return meta
+    
     def load_vars_from_env(
         self, 
         path:Path=None,
@@ -31,6 +33,8 @@ class EnvManager:
         for k, v in env_vars.items():
             env[k] = v
         return env
+    
+    #El contexto de esta función se está limitando a python, posiblemente la modifique después.
     def path_to_pypath(
         self,
         path:str, 
@@ -47,6 +51,8 @@ class EnvManager:
         except ValueError:
             raise EnvManagerError("El archivo no está dentro del package_root")
         return ".".join(relative.with_suffix("").parts)
+    
+    #El contexto de esta función se está limitando a python, posiblemente la modifique después.
     def for_in_directory(
         self,
         directory: Path,
@@ -73,34 +79,7 @@ class EnvManager:
                         content[name]["pypath"] = self.path_to_pypath(item.as_posix(), root_path)
         return content
 
-    """def mapApplications(
-        self, 
-        app, 
-        *,
-        logmanager, 
-        authmanager, 
-        mntmicroapp
-    ):
-        microapps = self.for_in_directory(root_path / "microapps")
-        for _, v in microapps.items():
-            kind, source = v["type"], v["source"]
-            if kind != "dir":
-                continue
-            template = self.for_in_directory(Path(source))
-            for filename, meta in template.items():
-                if filename != "Endpoints.py":
-                    continue
-                pypath = meta["pypath"]
-                url_prefix = pypath.split(".")[1]
-                self._mapApplication(
-                    app=app,
-                    pypath=pypath,
-                    url_prefix=url_prefix,
-                    logmanager=logmanager,
-                    authmanager=authmanager,
-                    mntmicroapp=mntmicroapp
-                )"""
-    
+    #El contexto de esta función se está limitando a python, posiblemente la modifique después.
     def mapApplications(
         self, 
         app, 
@@ -127,7 +106,8 @@ class EnvManager:
                 authmanager=authmanager,
                 mntmicroapp=mntmicroapp
             )
-            
+
+    #El contexto de esta función se está limitando a python, posiblemente la modifique después.
     def _mapApplication(
         self, 
         *, 

@@ -3,17 +3,23 @@ import requests
 
 
 class TelegramNotifier:
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        http_host: str
+    ):
+        self.http_host = http_host
     def send(
         self, 
+        reciever: str,
         message: str
     ):
         try:
             requests.post(
-                #cambiar por el servidor de telegram en lan correspondiente
-                "http://192.168.1.72:5000/send",
-                json={"message": message}
+                url=self.http_host,
+                json={
+                    "reciever": reciever, 
+                    "message": message
+                }
             )
         except Exception as e:
             raise TelegramError(e)

@@ -1,4 +1,4 @@
 from native.EnvManager.Errors import *
 
-class TelegramBaseError(BaseError): pass
-class TelegramError(TelegramBaseError): pass
+class _TelegramBaseError(BaseError): pass
+class TelegramError(_TelegramBaseError): pass
