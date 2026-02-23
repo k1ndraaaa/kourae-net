@@ -2,7 +2,13 @@
 
 Kourae-net es una plantilla de Minio + Postgresql, más una serie de soluciones a partir de esas dos: auth crudo, streaming, anti-payloads, etc. El nombre se lo puse así porque no se me ocurrió otro, lo cambiaré después.
 
-Comunicado de estado
+Sobre los paths:
+---------
+`/adapters`: Servicios de terceros (MinIO, PostgreSQL, Telegram, etc).
+`/native`: Helpers y bibliotecas de apoyo que sí o sí usa todo el proyecto.
+`/microapps`: APIs. No interviene en core ni infraestructura, sólo consume. Generalmente es HTTP.
+
+Comunicado de estado:
 ---------
 Se ha realizado una primera auditoría sobre la lógica interna (contratos y snippets). La documentación está en construcción y el código se alinea a estándares de Python. Se está revisando el rendimiento y la optimización de adaptadores para reducir y economizar consultas.
 
