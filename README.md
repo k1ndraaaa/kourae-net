@@ -17,6 +17,7 @@ Important: Web security (sessions, OAuth, HTTP protections, etc.) has not been a
 Python won't be the main language for this project, it's js a prototype lol
 
 Notes 2026, February 23 just for organization (i won't translate this):
+---------
 
 El nombre de "microapps" no expresa nada, es 50% api, 50% infraestructura; ¿qué demonios significa eso? 
 
