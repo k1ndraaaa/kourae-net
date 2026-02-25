@@ -1,6 +1,5 @@
 from native.EnvManager.MainClass import *
-from adapters.PostgreSQL.Errors import *
-
+from adapters.Postgresql.Errors import *
 
 import psycopg2, os #type:ignore
 from psycopg2 import pool #type:ignore

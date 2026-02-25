@@ -6,7 +6,7 @@ Sobre los paths:
 ---------
 `/adapters`: Servicios de terceros (MinIO, PostgreSQL, Redis, Telegram, etc).
 `/native`: Helpers y bibliotecas de apoyo que sí o sí usa todo el proyecto.
-`/microapps`: APIs. No interviene en core ni infraestructura, sólo consume. Generalmente es HTTP.
+`/solutions`: APIs. No interviene en core ni infraestructura, sólo consume. Generalmente es HTTP.
 
 Comunicado de estado:
 ---------
