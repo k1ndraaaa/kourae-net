@@ -1,6 +1,7 @@
 from native.EnvManager.MainClass import *
 from adapters.PostgreSQL.Errors import *
 
+
 import psycopg2, os #type:ignore
 from psycopg2 import pool #type:ignore
 from pathlib import Path
@@ -13,22 +14,15 @@ class PostgresClient:
         port:int,
         user:str,
         password:str,
+        database: str,
         min_connections: int = 1,
         max_connections: int = 3
     ):
         try:
-            self.my_relative_path = Path(__file__).resolve().parent.relative_to(root_path)
-            self.my_full_path = root_str_path / self.my_relative_path
-            self.env = EnvManager().load_vars_from_env(self.my_full_path / ".env")
-        except Exception as e:
-            raise ClassConstructionError(e) from e
-        try:
             self.client = psycopg2.pool.ThreadedConnectionPool(
                 min_connections,
                 max_connections,
-                dbname=str(
-                    self.env.get("database")
-                ),
+                dbname=database,
                 user=user,
                 password=password,
                 host=host,

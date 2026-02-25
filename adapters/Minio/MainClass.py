@@ -14,13 +14,6 @@ class MinioClient:
         password:str
     ):
         try:
-            self.my_relative_path = Path(__file__).resolve().parent.relative_to(root_path)
-            self.my_full_path = root_str_path / self.my_relative_path
-            self.env = EnvManager().load_vars_from_env(self.my_full_path / ".env")
-        except Exception as e:
-            raise ClassConstructionError(e) from e
-        
-        try:
             self.client = Minio(
                 f"{host}:{port}",
                 access_key=user,

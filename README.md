@@ -29,3 +29,14 @@ Aquí lo dije perfectamente: **más una serie de soluciones**. `/microapps` conc
 Oh, tengo que aclararles algo: No sé para qué chingados sirven los commit, así que uso Initial Commit para el código mismo y uso Update para informes o cambios en README, algo tipo prensa y comunicados.
 
 15:22 p.m (UTC -6): Me concentraré por ahora en `/adapters`. 
+
+Comentarios 2026, Febrero 24 para organizarme:
+---------
+
+Eliminé la lógica adicional en el constructor individual de cada clase en `/adapters`.
+
+He incorporado ya `/adapters`.
+
+Hay que revisar el sistema de logs porque no está registrando nada (en mi lap no funciona).
+
+Igual tengo algunas sospechas de problemas respecto a la emisión de tokens jwt. Además falta construir el sistema de refresh token.
