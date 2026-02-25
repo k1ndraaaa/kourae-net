@@ -15,28 +15,3 @@ Se ha realizado una primera auditoría sobre la lógica interna (contratos y sni
 Importante: en esta etapa no se han considerado aspectos de seguridad web (sesiones, OAuth, HTTP u otras medidas). No se ha hecho auditoría de seguridad para la capa web.
 
 Python no será el lenguaje predilecto para el proyecto, sólo es un prototipo.
-
-Comentarios 2026, Febrero 23 para organizarme:
----------
-El nombre de "microapps" no expresa nada, es 50% api, 50% infraestructura; ¿qué demonios significa eso? 
-
-Por ejemplo, `/adapters` sólo concentra servicios third party, habla directamente con las librerías del software externo más la interfaz amigable. Hasta ahí todo genial, se entiende.
-
-Se supone que **kourae-net es una plantilla de Minio + Postgresql + Redis, más una serie de soluciones a partir de esas dos: auth crudo, streaming, anti-payloads, cacheo, economización de consultas, etc**. 
-
-Aquí lo dije perfectamente: **más una serie de soluciones**. `/microapps` concentra parte de la infraestructura (creo que son MainClass.py); eso de inmediato hay que cambiarlo a otro path, ¿pero qué nombre le pondré?
-
-Oh, tengo que aclararles algo: No sé para qué chingados sirven los commit, así que uso Initial Commit para el código mismo y uso Update para informes o cambios en README, algo tipo prensa y comunicados.
-
-15:22 p.m (UTC -6): Me concentraré por ahora en `/adapters`. 
-
-Comentarios 2026, Febrero 24 para organizarme:
----------
-
-Eliminé la lógica adicional en el constructor individual de cada clase en `/adapters`.
-
-He incorporado ya `/adapters`.
-
-Hay que revisar el sistema de logs porque no está registrando nada (en mi lap no funciona).
-
-Igual tengo algunas sospechas de problemas respecto a la emisión de tokens jwt. Además falta construir el sistema de refresh token.
