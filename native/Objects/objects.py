@@ -1,8 +1,5 @@
-from typing import Protocol
-from typing import BinaryIO
+from typing import BinaryIO, Protocol, Any, Optional, Mapping
 from dataclasses import dataclass
-
-#No sé dónde meter esta serie de objetos
 
 class UserForm(Protocol):
     #id lo produce db, así que ni lo pongo

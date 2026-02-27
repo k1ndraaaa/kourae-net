@@ -14,3 +14,9 @@ Se ha realizado una primera auditoría sobre la lógica interna (contratos y sni
 Importante: en esta etapa no se han considerado aspectos de seguridad web (sesiones, OAuth, HTTP u otras medidas). No se ha hecho auditoría de seguridad para la capa web.
 
 Python no será el lenguaje predilecto para el proyecto, sólo es un prototipo.
+
+
+Comentarios Febrero 27, 2026:
+---------
+
+He dado inicio a un módulo o apartado llamado `/CrossFramework` ubicado en `/native`. Necesito lectura y opiniones al respecto. Ver qué intención le notan, etc.
