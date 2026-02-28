@@ -1,6 +1,6 @@
+from __future__ import annotations
 from typing import Any, Optional, Mapping, BinaryIO, Union
 from dataclasses import dataclass, field
-from __future__ import annotations
 import json
 from io import BytesIO, IOBase, BufferedIOBase, RawIOBase
 from types import MappingProxyType
