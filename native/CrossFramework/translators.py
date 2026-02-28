@@ -1,7 +1,130 @@
-from standar import *
-from typing import Any, Dict, List
-import base64
+from __future__ import annotations
+import base64, importlib, json
+from typing import Any, Optional, Mapping, BinaryIO, Union, Dict, List, Tuple, Callable
+from dataclasses import dataclass, field
+from io import BytesIO, IOBase, BufferedIOBase, RawIOBase
+from types import MappingProxyType
+from cgi import parse_header
 
+#helpers propios
+def _freeze_mapping(data: Optional[Mapping]) -> Mapping:
+    if not data:
+        return MappingProxyType({})
+    return MappingProxyType(dict(data))
+def _normalize_headers(headers: Optional[Mapping[str, str]]) -> Mapping[str, str]:
+    if not headers:
+        return MappingProxyType({})
+    return MappingProxyType({k.lower(): v for k, v in headers.items()})
+def _is_instance_of(obj, module_name, class_name):
+    try:
+        module = importlib.import_module(module_name)
+        cls = getattr(module, class_name)
+        return isinstance(obj, cls)
+    except ImportError:
+        return False
+def _check(obj, module_name, class_name):
+    return _is_instance_of(obj, module_name, class_name)
+def to_binary_io(file_obj: Union[bytes, bytearray, BinaryIO, object]) -> BinaryIO:
+    """
+        Normaliza diferentes tipos de entrada a un BinaryIO válido.
+        Soporta:
+            - bytes o bytearray
+            - IOBase (archivos abiertos en modo binario)
+            - Wrappers comunes que exponen `.file` o `.stream`
+            - Objetos con método `.read()` que retornen bytes
+        No depende de ningún framework específico.
+    """
+    if isinstance(file_obj, (bytes, bytearray)):
+        return BytesIO(file_obj)
+    if isinstance(file_obj, (BufferedIOBase, RawIOBase)):
+        return file_obj
+    if isinstance(file_obj, IOBase):
+        if getattr(file_obj, "encoding", None) is not None:
+            raise TypeError("Se recibió un stream de texto, pedí binario!!")
+        return file_obj
+    for attr in ("file", "stream"):
+        candidate = getattr(file_obj, attr, None)
+        if isinstance(candidate, (BufferedIOBase, RawIOBase)):
+            return candidate
+    read_method = getattr(file_obj, "read", None)
+    if callable(read_method):
+        try:
+            probe = read_method(0)
+            if isinstance(probe, bytes):
+                return file_obj
+        except Exception:
+            pass
+    raise TypeError(
+        f"Tipo de archivo no soportado: {type(file_obj).__name__}"
+    )
+
+#objetos de la solicitud
+@dataclass(frozen=True, slots=True)
+class Client:
+    ip: Optional[str] = None
+    port: Optional[int] = None
+    user_agent: Optional[str] = None
+@dataclass(frozen=True, slots=True)
+class Auth:
+    type: Optional[str] = None
+    credentials: Any = None
+@dataclass(frozen=True, slots=True)
+class Request:
+    method: str
+    url: str
+    path: str
+    headers: Mapping[str, str] = field(default_factory=dict)
+    query_params: Mapping[str, Any] = field(default_factory=dict)
+    path_params: Mapping[str, Any] = field(default_factory=dict)
+    body: Any = None
+    form: Mapping[str, Any] = field(default_factory=dict)
+    files: Mapping[str, Any] = field(default_factory=dict)
+    cookies: Mapping[str, str] = field(default_factory=dict)
+    client: Client = field(default_factory=Client)
+    auth: Auth = field(default_factory=Auth)
+    meta: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        object.__setattr__(self, "method", self.method.upper())
+        object.__setattr__(self, "headers", _normalize_headers(self.headers))
+        object.__setattr__(self, "query_params", _freeze_mapping(self.query_params))
+        object.__setattr__(self, "path_params", _freeze_mapping(self.path_params))
+        object.__setattr__(self, "form", _freeze_mapping(self.form))
+        object.__setattr__(self, "files", _freeze_mapping(self.files))
+        object.__setattr__(self, "cookies", _freeze_mapping(self.cookies))
+        object.__setattr__(self, "meta", _freeze_mapping(self.meta))
+
+    def header(self, name: str, default: Any = None) -> Any:
+        return self.headers.get(name.lower(), default)
+    def query(self, name: str, default: Any = None) -> Any:
+        return self.query_params.get(name, default)
+    def json(self, default: Any = None, *, silent: bool = False) -> Any:
+        if self.body is None:
+            return default
+        if isinstance(self.body, (dict, list)):
+            return self.body
+        if isinstance(self.body, (str, bytes)):
+            try:
+                return json.loads(self.body)
+            except json.JSONDecodeError:
+                if silent:
+                    return default
+                raise
+        return default
+    def is_json(self) -> bool:
+        content_type = self.header("content-type", "")
+        mime_type, _ = parse_header(content_type)
+        mime_type = mime_type.lower()
+        return mime_type == "application/json" or mime_type.endswith("+json")
+    def is_multipart_formdata(self) -> bool:
+        content_type = self.header("content-type", "")
+        mime_type, params = parse_header(content_type)
+        return (
+            mime_type.lower() == "multipart/form-data"
+            and "boundary" in params
+        )
+
+#traductores
 def translate_flask_request(flask_req: Any) -> Request:
     headers: Dict[str, str] = dict(flask_req.headers)
     query_params: Dict[str, List[str]] = {
@@ -61,7 +184,6 @@ def translate_flask_request(flask_req: Any) -> Request:
         auth=auth_obj,
         meta=meta,
     )
-
 def translate_django_request(django_req: Any) -> Request:
     headers: Dict[str, str] = dict(django_req.headers)
     query_params: Dict[str, List[str]] = {
@@ -131,7 +253,6 @@ def translate_django_request(django_req: Any) -> Request:
         auth=auth_obj,
         meta=meta,
     )
-
 async def translate_fastapi_request(fastapi_req: Any) -> Request:
     headers: Dict[str, str] = dict(fastapi_req.headers)
     query_params: Dict[str, List[str]] = {
@@ -209,3 +330,49 @@ async def translate_fastapi_request(fastapi_req: Any) -> Request:
         auth=auth_obj,
         meta=meta,
     )
+
+TranslatorEntry = Tuple[
+    Callable[[Any], bool],# check
+    Callable[[Any], Any],# traductor a usar
+    bool # async sí o no
+]
+_TRANSLATORS: List[TranslatorEntry] = []
+def register_translator(
+    check_fn: Callable[[Any], bool],
+    handler_fn: Callable[[Any], Any],
+    *,
+    is_async: bool = False,
+) -> None:
+    _TRANSLATORS.append((check_fn, handler_fn, is_async))
+
+#función usable
+async def translate(request_obj: Any):
+    for check_fn, handler_fn, is_async in _TRANSLATORS:
+        if check_fn(request_obj):
+            if is_async:
+                return await handler_fn(request_obj)
+            return handler_fn(request_obj)
+    raise TypeError(f"Unsupported request type: {type(request_obj)}")
+
+# Este xframework por el momento soporta 3 tecnologías. Se inyectan al momento de importar este archivo a su proyecto.
+
+def _inject():
+    # Flask
+    register_translator(
+        lambda obj: _check(obj, "flask", "Request"),
+        translate_flask_request,
+        is_async=False,
+    )
+    # Django
+    register_translator(
+        lambda obj: _check(obj, "django.http", "HttpRequest"),
+        translate_django_request,
+        is_async=False,
+    )
+    # FastAPI / Starlette
+    register_translator(
+        lambda obj: _check(obj, "starlette.requests", "Request"),
+        translate_fastapi_request,
+        is_async=True,
+    )
+_inject()
