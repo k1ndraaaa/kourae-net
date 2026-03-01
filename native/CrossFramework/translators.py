@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from io import BytesIO, IOBase, BufferedIOBase, RawIOBase
 from types import MappingProxyType
 from cgi import parse_header
+import asyncio
 
 #helpers propios
 def _freeze_mapping(data: Optional[Mapping]) -> Mapping:
@@ -24,6 +25,7 @@ def _is_instance_of(obj, module_name, class_name):
         return False
 def _check(obj, module_name, class_name):
     return _is_instance_of(obj, module_name, class_name)
+#función usable o rescatable del módulo
 def to_binary_io(file_obj: Union[bytes, bytearray, BinaryIO, object]) -> BinaryIO:
     """
         Normaliza diferentes tipos de entrada a un BinaryIO válido.
@@ -219,7 +221,6 @@ def translate_django_request(django_req: Any) -> Request:
                 credentials={"token": auth_header[7:]},
             )
         elif auth_header.startswith("Basic "):
-            import base64
             try:
                 decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
                 username, password = decoded.split(":", 1)
@@ -345,14 +346,32 @@ def register_translator(
 ) -> None:
     _TRANSLATORS.append((check_fn, handler_fn, is_async))
 
-#función usable
-async def translate(request_obj: Any):
+def _translate(request_obj: Any):
+    for check_fn, handler_fn, is_async in _TRANSLATORS:
+        if check_fn(request_obj):
+            return handler_fn(request_obj)
+    raise TypeError(f"Unsupported request type: {type(request_obj)}")        
+
+async def _atranslate(request_obj: Any):
     for check_fn, handler_fn, is_async in _TRANSLATORS:
         if check_fn(request_obj):
             if is_async:
                 return await handler_fn(request_obj)
             return handler_fn(request_obj)
     raise TypeError(f"Unsupported request type: {type(request_obj)}")
+
+#función usable o rescatable del módulo
+def translate_request(req_obj: Any):
+    if _is_instance_of(req_obj, "starlette.requests", "Request"):
+        async def runner():
+            return await _atranslate(req_obj)
+        try:
+            loop = asyncio.get_running_loop()
+            return runner()
+        except RuntimeError:
+            return asyncio.run(runner())
+    else:
+        return _translate(req_obj)
 
 # Este xframework por el momento soporta 3 tecnologías. Se inyectan al momento de importar este archivo a su proyecto.
 
