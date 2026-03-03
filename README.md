@@ -20,3 +20,5 @@ Comentarios Febrero 27, 2026:
 ---------
 
 He dado inicio a un módulo o apartado llamado `/CrossFramework` ubicado en `/native`. Necesito lectura y opiniones al respecto. Ver qué intención le notan, etc.
+
+Holaaa, cloné el repositorio en mi nueva máquina
