@@ -1,5 +1,7 @@
-from typing import BinaryIO, Protocol, Any, Optional, Mapping
+from typing import BinaryIO, Protocol
 from dataclasses import dataclass
+from native.PayloadValidator.MainClass import PayloadValidator 
+from native.CrossFramework.translators import Request as StandarRequest
 
 class UserForm(Protocol):
     #id lo produce db, así que ni lo pongo
@@ -39,3 +41,64 @@ class StorageObject:
 class StoragePointer:
     bucket: str
     object_key: str
+
+@dataclass
+class Field:
+    key: str
+    min_length: int | None = None
+    max_length: int | None = None
+    datatype: type | tuple[type, ...] | None = None
+    scanner: tuple | PayloadValidator | None = None
+
+class ExpectedData:
+    def __init__(self, request: StandarRequest):
+        self.fields: dict[str, Field] = {}
+        self.standar_request = request
+        self._captured = {}
+        self._errors = {}
+    def __iter__(self):
+        return iter(self.fields.values())
+    def add(self, field: Field):
+        if field.key in self.fields:
+            raise ValueError(f"Field '{field.key}' duplicado")
+        self.fields[field.key] = field
+        return self
+    def read(self):
+        data = self.standar_request.get_data()
+        if not isinstance(data, dict):
+            self._errors["body"] = "INVALID_BODY"
+            return {}
+        captured = {}
+        errors = {}
+        for field in self:
+            value = data.get(field.key)
+            if value is None:
+                errors[field.key] = "MISSING"
+                continue
+            if field.datatype and not isinstance(value, field.datatype):
+                errors[field.key] = "INVALID_DATATYPE"
+                continue
+            if field.min_length and len(value) < field.min_length:
+                errors[field.key] = "MIN_LENGTH"
+                continue
+            if field.max_length and len(value) > field.max_length:
+                errors[field.key] = "MAX_LENGTH"
+                continue
+            if field.scanner:
+                if isinstance(field.scanner, (list, tuple, set)):
+                    if value not in field.scanner:
+                        errors[field.key] = "INVALID_OPTION"
+                        continue
+                elif not field.scanner.validate_string(value).valido:
+                    errors[field.key] = "INVALID_VALUE"
+                    continue
+            captured[field.key] = value
+        self._captured = captured
+        self._errors = errors
+        return captured
+    def missing_fields(self):
+        return self._errors
+    def is_body_full(self):
+        return not bool(self._errors)
+    def data(self):
+        return self._captured

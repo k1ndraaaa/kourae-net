@@ -59,6 +59,14 @@ def to_binary_io(file_obj: Union[bytes, bytearray, BinaryIO, object]) -> BinaryI
     raise TypeError(
         f"Tipo de archivo no soportado: {type(file_obj).__name__}"
     )
+def _normalize_multidict(data):
+    normalized = {}
+    for key, value in data.items():
+        if isinstance(value, list):
+            normalized[key] = value[0] if len(value) == 1 else value
+        else:
+            normalized[key] = value
+    return normalized
 
 #objetos de la solicitud
 @dataclass(frozen=True, slots=True)
@@ -100,7 +108,8 @@ class Request:
         return self.headers.get(name.lower(), default)
     def query(self, name: str, default: Any = None) -> Any:
         return self.query_params.get(name, default)
-    def json(self, default: Any = None, *, silent: bool = False) -> Any:
+    
+    """def _json(self, default: Any = None, *, silent: bool = False) -> Any:
         if self.body is None:
             return default
         if isinstance(self.body, (dict, list)):
@@ -113,6 +122,62 @@ class Request:
                     return default
                 raise
         return default
+    def _formdata(self):
+        return _normalize_multidict(self.form)
+    
+    def data(self):
+        if self.is_json():
+            return self._json()
+        elif self.is_multipart_formdata():
+            return self._formdata()"""
+    
+    def get_files(self) -> dict[str, list[dict]]:
+        result = {}
+        for field_name, raw_files in self.files.items():
+            if not isinstance(raw_files, list):
+                raw_files = [raw_files]
+            file_list = []
+            for f in raw_files:
+                stream = f.get("stream")
+                if stream:
+                    try:
+                        stream = to_binary_io(stream)
+                    except TypeError:
+                        pass
+                file_list.append({
+                    "filename": f.get("filename"),
+                    "content_type": f.get("content_type"),
+                    "stream": stream,
+                })
+            result[field_name] = file_list
+        return result
+    
+    def _json(self, default: Any = None, *, silent: bool = False) -> Any:
+        if self.body is None:
+            return default
+        if isinstance(self.body, (dict, list)):
+            return self.body
+        if isinstance(self.body, (str, bytes)):
+            try:
+                return json.loads(self.body)
+            except json.JSONDecodeError:
+                if silent:
+                    return default
+                raise
+        return default
+
+    def _formdata(self):
+        if not self.form:
+            return {}
+        return _normalize_multidict(self.form)
+
+    def get_data(self, default: Any = None):
+        if self.is_json():
+            return self._json(default=default)
+        if self.is_multipart_formdata() or self.is_form_urlencoded():
+            return self._formdata()
+        return default
+
     def is_json(self) -> bool:
         content_type = self.header("content-type", "")
         mime_type, _ = parse_header(content_type)
@@ -125,6 +190,10 @@ class Request:
             mime_type.lower() == "multipart/form-data"
             and "boundary" in params
         )
+    def is_form_urlencoded(self) -> bool:
+        content_type = self.header("content-type", "")
+        mime_type, _ = parse_header(content_type)
+        return mime_type.lower() == "application/x-www-form-urlencoded"
 
 #traductores
 def translate_flask_request(flask_req: Any) -> Request:
