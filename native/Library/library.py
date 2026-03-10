@@ -3,6 +3,16 @@ from dataclasses import dataclass
 from native.PayloadValidator.MainClass import PayloadValidator 
 from native.CrossFramework.translators import Request as StandarRequest
 
+def human_readable_size(size_bytes: int):
+    if size_bytes == 0:
+        return "0B"
+    units = ["B", "KB", "MB", "GB", "TB"]
+    i = 0
+    while size_bytes >= 1024 and i < len(units)-1:
+        size_bytes /= 1024
+        i += 1
+    return f"{size_bytes:.2f}{units[i]}"
+
 class UserForm(Protocol):
     #id lo produce db, así que ni lo pongo
     username: str
