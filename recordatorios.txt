@@ -29,3 +29,7 @@ No debo usar el README como notas rápidas.
 Debo estandarizar snake_case y definir todo en inglés, no puedo estar usando español e inglés al mismo tiempo.
 
 (Sigo trabajando en `/adapters`)
+
+[Marzo 10, 2026]
+
+He construido mi ExpectedData object. Casi 3 semanas pensando en cómo hacerlo.
