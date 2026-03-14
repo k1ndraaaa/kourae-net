@@ -1,3 +1,5 @@
+![Hola](https://github.com/k1ndraaaa/kourae-net/blob/main/portada.jpg)
+
 ## Kourae-net
 
 Kourae-net es una plantilla de Minio + Postgresql + Redis, más una serie de soluciones a partir de esas dos: auth crudo, streaming, anti-payloads, cacheo, economización de consultas, etc. El nombre se lo puse así porque no se me ocurrió otro, lo cambiaré después.
