@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from collections import Counter, defaultdict
-from typing import Any, List, Dict, Union, Tuple, Optional
+from typing import Any, List, Dict, Optional
 import re
 import unicodedata
 
