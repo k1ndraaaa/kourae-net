@@ -1,5 +1,5 @@
-from native.EnvManager.MainClass import *
-from native.Library.others import SqlClient, TableSchema, DatabaseSchema
+from native.EnvLoader.MainClass import *
+from native.Library.commons import SqlClient, TableSchema, DatabaseSchema
 from adapters.Postgresql.Errors import *
 import psycopg2 #type:ignore
 from psycopg2 import pool #type:ignore

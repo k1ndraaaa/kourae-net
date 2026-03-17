@@ -1,4 +1,4 @@
-from native.EnvManager.MainClass import *
+from native.EnvLoader.MainClass import *
 from adapters.Minio.Errors import *
 
 import os

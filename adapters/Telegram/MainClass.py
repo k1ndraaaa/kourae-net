@@ -1,7 +1,6 @@
 from adapters.Telegram.Errors import *
 import requests
 
-
 class TelegramNotifier:
     def __init__(
         self,
