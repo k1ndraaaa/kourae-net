@@ -33,3 +33,27 @@ Debo estandarizar snake_case y definir todo en inglés, no puedo estar usando es
 [Marzo 10, 2026]
 
 He construido mi ExpectedData object. Casi 3 semanas pensando en cómo hacerlo.
+
+[Marzo 16, 2026]
+
+He construido mi Economizador de consultas sql.
+
+1.- Retirar autenticación a recursos cacheados públicos.
+
+2.- No sé qué hacer con los demás comandos sql:
+    DELETE/UPDATE: mientras delete elimina inmediatamente remueve el recurso cacheado, update 
+    debe modificar el recurso cacheado.
+    INSERT: no tiene nada que ver con el cacheo. Queda descartado
+
+    Para eso debe haber una sincronía, una forma de enlazar el dato guardado con el registro. 
+    ¿Cómo sincronizar, foreeando todos los registros en redis comparando la coincidencia?
+
+    Considerar que a redis sólo pueden llegar registros hechos por SELECT. Siento que desde ese momento debo hacer un identificador, jwt o firma de query:
+
+    [id_registro + nombre_tabla] firmada en b64 al inicio de la cache_key -> eso anota select.
+
+    Y update hace lo mismo, peeero en lugar de registrar, pide borrarlo, modificarlo o lo que se me ocurra. Quizá puedo hacer hashes por fila, así sólo modifico lo necesario
+
+    Y para delete, ese luego luego genera el [id_registro + nombre_tabla] y pide invalidar
+
+    No sé
