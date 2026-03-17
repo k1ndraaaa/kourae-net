@@ -1,0 +1,24 @@
+Economización de queries sql
+Git para consultas: id_de_query -> cada mínima query (SELECT principalmente) se debe valorar muchísimo. En mi cabeza debo hacer cabezales,
+headers o una estructura con metadatos porque al no discriminar tablas o considerarlas por igual, el sistema tiene una guía más cómoda.
+Se guarda el schema de metadatos más el dato consultado, obviamente. 
+En consultas select me gustaría que cuando el usuario haya encontrado el recurso, lo guarde (obvio local). Es que, si guardo TODOS los datos
+por coincidencia, estarías guardando pura basura. A excepción de su perfil, toda su info pública se descarga a ram (porque es una plantilla profile).
+Mira, imagina que la clase tenga un método, todo se guarda local hasta que recurres al método y se publica a nivel base.
+Se autentica con un usuario y una escena. La escena es el contexto de la app. Puedes poner "aplicación" o un fingerprint del navegador.
+Generalmente cuando hacemos consultas sql, no nos autenticamos más allá de la conexión al servidor sql.
+["usuario", "escena"] -> usuario o sesión
+Debo diseñar un sistema tipo watchdog que detecte cuando surga un cambio en los recursos o datos.
+Para queries UPDATE hacer un delay. Este delay es como una paciencia de atención al cliente para confirmar que el usuario terminó de hacer sus arreglos.
+
+"id_or_query_name": {
+"session": user + escena, #así la class Profile, Session o lo que sea sólo agarra lo suyo
+"id": 0, #id del registro consumido source redis o donde estés persistiendo
+..., #resto de propiedades source redis o donde estés persistiendo
+"content": ... #contenido source redis o donde estés persistiendo
+}
+
+Ese diccionario es de ejemplo, porque físicamente no existirá quizá, ya vez que redis hace ya mucho
+
+Casi casi es un layer sobre redis y sql. Si redis tiene listeners ya ganamos. Por ejemplo, que redis me diga si un id no se ha actualizado, ya postearlo a db
+
