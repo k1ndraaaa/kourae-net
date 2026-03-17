@@ -1,12 +1,9 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from enum import Enum
 from collections import Counter, defaultdict
-from typing import Any, List, Dict, Optional
-import re
-import unicodedata
-
+from typing import Any, List
+import re, unicodedata
 from native.PayloadValidator.Errors import *
+from native.Library.commons import SecurityLevel, Issue, ValidationResult, is_forbidden_category, has_combining_marks, has_mixed_scripts, normalize_and_clean, detect_sql_payload, detect_xss_payload, safe_str
 
 ALLOWED_EXTENSIONS = {
     "pdf":  {"mime": "application/pdf", "category": "document"},
@@ -100,140 +97,16 @@ ALLOWED_EXTENSIONS = {
     "sha256": {"mime": "text/plain", "category": "info"}
 }
 
-
 MAX_LEN_PER_FIELD = 500
-ALLOW_CONTROL_WHITESPACE = {'\n', '\r', '\t'}
 
 FORBIDDEN_CHARS_STRICT = set("<>[]{}()'\";\\")
 FORBIDDEN_CHARS_PARANOID = set(
     ".,-#<>[]$%*()'`;?¿:\"=~{}@&/|·¬\\"
 )
 
-SQL_KEYWORDS = {
-    'select', 'union', 'insert', 'update', 'delete', 'drop', 'alter',
-    'where', 'from', 'into', 'values', 'create', 'table', 'database',
-    'exec', 'exists'
-}
-
-SQL_COMMENT_PATTERNS = [
-    re.compile(r"--[^\n]*"),
-    re.compile(r"/\*.*?\*/", re.DOTALL),
-    re.compile(r"#.*"),
-]
-
-XSS_PATTERNS = [
-    re.compile(r"<\s*script\b", re.I),
-    re.compile(r"on\w+\s*=", re.I),
-    re.compile(r"javascript\s*:", re.I),
-    re.compile(r"<\s*(iframe|svg)\b", re.I),
-    re.compile(r"\b(document|window)\s*\.", re.I),
-    re.compile(r"\beval\s*\(", re.I),
-]
-
-WEIRD_UNICODE_RANGES = [
-    (0x200B, 0x200F),
-    (0x202A, 0x202E),
-    (0x2066, 0x2069),
-    (0xFEFF, 0xFEFF),
-    (0x00AD, 0x00AD),
-    (0x034F, 0x034F),
-    (0x061C, 0x061C),
-    (0x2060, 0x2060),
-]
-
 STRICT_REGEX = re.compile(r"^[A-Za-z0-9_]+$")
 PARANOID_REGEX = re.compile(r"^[a-z0-9]+$")
 USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9._-]{3,32}$")
-
-class SecurityLevel(Enum):
-    OPEN = 0
-    SAFE_TEXT = 1
-    USERNAME = 2
-    STRICT = 3
-    PARANOID = 4
-
-
-@dataclass(frozen=True)
-class Issue:
-    path: str
-    problem: str
-    severity: int = 1
-    char: str = ''
-    codepoint: str = ''
-    category: str = ''
-    count: int = 0
-    snippet: str = ''
-    extra: dict = field(default_factory=dict)
-
-
-@dataclass
-class ValidationResult:
-    valido: bool
-    severity_max: int
-    errores: List[str]
-    detalles: Dict[str, List[Issue]]
-
-
-def is_weird_unicode(ch: str) -> bool:
-    cp = ord(ch)
-    return any(a <= cp <= b for a, b in WEIRD_UNICODE_RANGES)
-
-
-def is_forbidden_category(ch: str) -> bool:
-    cat = unicodedata.category(ch)
-    if cat in {'Cc', 'Cf', 'Cs', 'Co', 'Cn'}:
-        return ch not in ALLOW_CONTROL_WHITESPACE
-    return False
-
-
-def has_combining_marks(s: str) -> bool:
-    return any(unicodedata.category(c) == "Mn" for c in s)
-
-
-def has_mixed_scripts(s: str) -> bool:
-    scripts = set()
-    for ch in s:
-        if ch.isalpha():
-            try:
-                name = unicodedata.name(ch)
-                for script in ("LATIN", "CYRILLIC", "GREEK", "ARABIC", "HEBREW"):
-                    if script in name:
-                        scripts.add(script)
-            except ValueError:
-                pass
-    return len(scripts) > 1
-
-
-def normalize_and_clean(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text)
-    return ''.join(c for c in text if not is_weird_unicode(c))
-
-
-def tokenize(text: str) -> list:
-    return re.findall(r"[a-zA-Z_]+|\d+|[=()]", text.lower())
-
-
-def detect_sql_payload(text: str) -> bool:
-    tokens = tokenize(text)
-    hits = [t for t in tokens if t in SQL_KEYWORDS]
-    if len(hits) >= 2 and any(op in tokens for op in ("=", "(", ")")):
-        return True
-    return any(p.search(text) for p in SQL_COMMENT_PATTERNS)
-
-
-def detect_xss_payload(text: str) -> bool:
-    return any(p.search(text) for p in XSS_PATTERNS)
-
-
-def safe_str(x: Any) -> Optional[str]:
-    if isinstance(x, (str, int, float, bool)):
-        return str(x)
-    if isinstance(x, bytes):
-        try:
-            return x.decode("utf-8", "strict")
-        except Exception:
-            return None
-    return None
 
 class PayloadValidator:
     def __init__(self, level: SecurityLevel):

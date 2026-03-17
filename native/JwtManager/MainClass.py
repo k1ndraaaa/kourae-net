@@ -1,29 +1,31 @@
-from native.EnvManager.MainClass import *
-
-#Componentes a usar
-from native.JwtManager.Errors import *
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from pathlib import Path
+from typing import Dict
 import jwt
-
+from pathlib import Path
+from native.JwtManager.Errors import TokenExpired, TokenInvalid, TokenTypeMismatch
+from native.EnvLoader.MainClass import EnvLoader
 
 class JwtManager:
     ISSUER = "kourae-api"
-    def __init__(self):
-        self.description = ""
-        self.my_relative_path = Path(__file__).resolve().parent.relative_to(root_path)
-        self.my_full_path = Path(root_str_path / self.my_relative_path)
-        self.env = EnvManager().load_vars_from_env(
-            Path(self.my_full_path / ".env")
-        )
-        self.jwtsecret = self.env.get("jwt_secret_key")
-        self.jwtalgorithm = self.env.get("jwt_algorithm")
-        self.access_token_minutes = int(self.env.get("access_token_minutes"))
-        self.refresh_token_days = int(self.env.get("refresh_token_days"))
-        self.utczone = ZoneInfo("UTC")
-
-    def encode(self, payload: dict, expires_delta: timedelta) -> str:
+    def __init__(self, config_path: Path):
+        env = EnvLoader().load_vars_from_env(path=config_path)
+        config = {
+            "jwt_secret_key": env["jwt_secret_key"],
+            "jwt_algorithm": env.get("jwt_algorithm", "HS256"),
+            "access_token_minutes": int(env.get("access_token_minutes", 15)),
+            "refresh_token_days": int(env.get("refresh_token_days", 7)),
+            "utc_zone": ZoneInfo("UTC"),
+        }
+        try:
+            self.jwtsecret = config["jwt_secret_key"]
+        except KeyError:
+            raise ValueError("Falta 'jwt_secret_key' en configuración JWT")
+        self.jwtalgorithm = config.get("jwt_algorithm", "HS256")
+        self.access_token_minutes = int(config.get("access_token_minutes", 15))
+        self.refresh_token_days = int(config.get("refresh_token_days", 7))
+        self.utczone = config.get("utc_zone", ZoneInfo("UTC"))
+    def encode(self, payload: Dict, expires_delta: timedelta) -> str:
         now = datetime.now(tz=self.utczone)
         data = payload.copy()
         data.update({
@@ -31,14 +33,9 @@ class JwtManager:
             "exp": int((now + expires_delta).timestamp()),
             "iss": self.ISSUER,
         })
-        token = jwt.encode(
-            data,
-            self.jwtsecret,
-            algorithm=self.jwtalgorithm
-        )
-        return token.decode("utf-8") if isinstance(token, bytes) else token
-
-    def decode(self, token: str, verify_exp: bool = True) -> dict:
+        token = jwt.encode(data, self.jwtsecret, algorithm=self.jwtalgorithm)
+        return token
+    def decode(self, token: str, verify_exp: bool = True) -> Dict:
         try:
             return jwt.decode(
                 token,
@@ -52,35 +49,25 @@ class JwtManager:
             raise TokenExpired("Token expirado")
         except jwt.InvalidTokenError as e:
             raise TokenInvalid(str(e))
-
     def create_access_token(self, username: str) -> str:
         payload = {
             "sub": str(username),
             "type": "access",
         }
-        return self.encode(
-            payload,
-            timedelta(minutes=self.access_token_minutes)
-        )
-
+        return self.encode(payload, timedelta(minutes=self.access_token_minutes))
     def create_refresh_token(self, username: str, jti: str) -> str:
         payload = {
             "sub": str(username),
             "type": "refresh",
             "jti": jti,
         }
-        return self.encode(
-            payload,
-            timedelta(days=self.refresh_token_days)
-        )
-
-    def create_token_pair(self, username: str, jti: str) -> dict:
+        return self.encode(payload, timedelta(days=self.refresh_token_days))
+    def create_token_pair(self, username: str, jti: str) -> Dict[str, str]:
         return {
             "sessionID": self.create_access_token(username),
             "refresh_sessionID": self.create_refresh_token(username, jti),
         }
-
-    def validate_token(self, token: str, expected_type: str) -> dict:
+    def validate_token(self, token: str, expected_type: str) -> Dict:
         payload = self.decode(token)
         token_type = payload.get("type")
         if token_type != expected_type:
@@ -91,17 +78,14 @@ class JwtManager:
         if not sub:
             raise TokenInvalid("Token sin subject")
         return payload
-
     def is_token_expired(self, token: str) -> bool:
         try:
             self.decode(token, verify_exp=True)
             return False
         except TokenExpired:
             return True
-
     def whois(self, token: str) -> str:
         payload = self.validate_token(token, expected_type="access")
         return payload["sub"]
-
-    def extract_refresh_payload(self, refresh_token: str) -> dict:
+    def extract_refresh_payload(self, refresh_token: str) -> Dict:
         return self.validate_token(refresh_token, expected_type="refresh")

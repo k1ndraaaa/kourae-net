@@ -1,16 +1,5 @@
-from native.PayloadValidator.MainClass import PayloadValidator 
-from native.CrossFramework.translators import Request as StandarRequest
+from native.Library.commons import Request as StandarRequest, Field
 from collections.abc import Sized
-from dataclasses import dataclass
-
-@dataclass
-class Field:
-    key: str
-    min_length: int | None = None
-    max_length: int | None = None
-    datatype: type | tuple[type, ...] | None = None
-    scanner: tuple | PayloadValidator | None = None
-    default: object | None = None
 
 class ExpectedData:
     def __init__(self, request: StandarRequest):

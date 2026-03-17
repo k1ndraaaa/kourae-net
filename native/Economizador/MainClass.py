@@ -1,52 +1,9 @@
 from adapters.Redis.MainClass import RedisClient
 from typing import Dict, Optional
-from dataclasses import dataclass, field
-#así sea postgresql, mysql, mariadb, presentan el mismo frontend
+#así sea postgresql, mysql, mariadb, en un futuro presentarían el mismo frontend
 from adapters.Postgresql.MainClass import PostgresClient as SqlClient, Select, Update, Delete
-from native.Library.others import DatabaseSchema, b64_encrypt, b64_decrypt
+from native.Library.commons import DatabaseSchema, Session
 import json
-
-@dataclass(frozen=True)
-class Session:
-    _user: Optional[str] = field(default="python")
-    _escena: Optional[str] = field(default="main")
-    password: Optional[str] = field(default="123abc")
-    address: Optional[str] = field(default=None)
-    def __post_init__(self):
-        if self.address is None and self._user and self._escena and self.password:
-            object.__setattr__(
-                self,
-                "address",
-                b64_encrypt(
-                    text=f"{self._user}@{self._escena}",
-                    key=self.password
-                )
-            )
-    @property
-    def user(self):
-        if self._user is not None:
-            return self._user
-        if self.address and self.password:
-            try:
-                decrypted = b64_decrypt(self.address, key=self.password)
-                return decrypted.split("@", 1)[0]
-            except Exception:
-                return None
-        return None
-    @property
-    def escena(self):
-        if self._escena is not None:
-            return self._escena
-        if self.address and self.password:
-            try:
-                decrypted = b64_decrypt(self.address, key=self.password)
-                return decrypted.split("@", 1)[1]
-            except Exception:
-                return None
-        return None
-    def __iter__(self):
-        for key in ["user", "escena", "password", "address"]:
-            yield (key, getattr(self, key))
 
 class Economizador:
     def __init__(
