@@ -57,3 +57,7 @@ He construido mi Economizador de consultas sql.
     Y para delete, ese luego luego genera el [id_registro + nombre_tabla] y pide invalidar
 
     No sé
+
+[Marzo 21, 2026]
+
+1.- Session del usuario no se está respetando para cacheo, corregir clientes Auth y Streaming (si es necesario) respecto a eso.

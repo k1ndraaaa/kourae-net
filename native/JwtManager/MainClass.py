@@ -4,12 +4,15 @@ from typing import Dict
 import jwt
 from pathlib import Path
 from native.JwtManager.Errors import TokenExpired, TokenInvalid, TokenTypeMismatch
-from native.EnvLoader.MainClass import EnvLoader
+from adapters.EnvLoader.MainClass import EnvLoader, root_path
 
 class JwtManager:
     ISSUER = "kourae-api"
-    def __init__(self, config_path: Path):
-        env = EnvLoader().load_vars_from_env(path=config_path)
+    def __init__(self):
+        mypath = Path(root_path / "native" / "JwtManager")
+        env = EnvLoader().load_vars_from_env(
+            path= Path(mypath / ".env")
+        )
         config = {
             "jwt_secret_key": env["jwt_secret_key"],
             "jwt_algorithm": env.get("jwt_algorithm", "HS256"),
@@ -89,3 +92,9 @@ class JwtManager:
         return payload["sub"]
     def extract_refresh_payload(self, refresh_token: str) -> Dict:
         return self.validate_token(refresh_token, expected_type="refresh")
+    def refresh_access_token(self, refresh_token: str):
+        payload = self.extract_refresh_payload(refresh_token)
+        username = payload["sub"]
+        jti = payload["jti"]
+        new_access = self.create_access_token(username)
+        return new_access

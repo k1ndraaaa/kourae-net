@@ -1,47 +1,18 @@
-from typing import BinaryIO, Protocol, Dict, Optional, Mapping, Union, Any, Callable, Tuple, List
+from typing import BinaryIO, Protocol, Dict, Optional, Mapping, Union, Any, Callable, Tuple
 from io import BytesIO, IOBase, BufferedIOBase, RawIOBase
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from cgi import parse_header
-from enum import Enum
-import hashlib, json, base64, importlib, unicodedata, re
+import hashlib, json, base64, importlib, re
 from native.PayloadValidator.MainClass import PayloadValidator 
-from pathlib import Path
 
-WEIRD_UNICODE_RANGES = [
-    (0x200B, 0x200F),
-    (0x202A, 0x202E),
-    (0x2066, 0x2069),
-    (0xFEFF, 0xFEFF),
-    (0x00AD, 0x00AD),
-    (0x034F, 0x034F),
-    (0x061C, 0x061C),
-    (0x2060, 0x2060),
-]
-
-ALLOW_CONTROL_WHITESPACE = {'\n', '\r', '\t'}
-
-SQL_KEYWORDS = {
-    'select', 'union', 'insert', 'update', 'delete', 'drop', 'alter',
-    'where', 'from', 'into', 'values', 'create', 'table', 'database',
-    'exec', 'exists'
-}
-
-SQL_COMMENT_PATTERNS = [
-    re.compile(r"--[^\n]*"),
-    re.compile(r"/\*.*?\*/", re.DOTALL),
-    re.compile(r"#.*"),
-]
-
-XSS_PATTERNS = [
-    re.compile(r"<\s*script\b", re.I),
-    re.compile(r"on\w+\s*=", re.I),
-    re.compile(r"javascript\s*:", re.I),
-    re.compile(r"<\s*(iframe|svg)\b", re.I),
-    re.compile(r"\b(document|window)\s*\.", re.I),
-    re.compile(r"\beval\s*\(", re.I),
-]
-
+def build_set(data):
+    parts = []
+    params = []
+    for key, value in data.items():
+        parts.append(f"{key} = %s")
+        params.append(value)
+    return ", ".join(parts), params
 #helpers de cross framework
 def _freeze_mapping(data: Optional[Mapping]) -> Mapping:
     if not data:
@@ -121,50 +92,6 @@ def b64_decrypt(token: str, key: str) -> str:
     key_bytes = key.encode()
     decrypted_bytes = bytes([b ^ key_bytes[i % len(key_bytes)] for i, b in enumerate(encrypted_bytes)])
     return decrypted_bytes.decode()
-def is_weird_unicode(ch: str) -> bool:
-    cp = ord(ch)
-    return any(a <= cp <= b for a, b in WEIRD_UNICODE_RANGES)
-def is_forbidden_category(ch: str) -> bool:
-    cat = unicodedata.category(ch)
-    if cat in {'Cc', 'Cf', 'Cs', 'Co', 'Cn'}:
-        return ch not in ALLOW_CONTROL_WHITESPACE
-    return False
-def has_combining_marks(s: str) -> bool:
-    return any(unicodedata.category(c) == "Mn" for c in s)
-def has_mixed_scripts(s: str) -> bool:
-    scripts = set()
-    for ch in s:
-        if ch.isalpha():
-            try:
-                name = unicodedata.name(ch)
-                for script in ("LATIN", "CYRILLIC", "GREEK", "ARABIC", "HEBREW"):
-                    if script in name:
-                        scripts.add(script)
-            except ValueError:
-                pass
-    return len(scripts) > 1
-def normalize_and_clean(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text)
-    return ''.join(c for c in text if not is_weird_unicode(c))
-def tokenize(text: str) -> list:
-    return re.findall(r"[a-zA-Z_]+|\d+|[=()]", text.lower())
-def detect_sql_payload(text: str) -> bool:
-    tokens = tokenize(text)
-    hits = [t for t in tokens if t in SQL_KEYWORDS]
-    if len(hits) >= 2 and any(op in tokens for op in ("=", "(", ")")):
-        return True
-    return any(p.search(text) for p in SQL_COMMENT_PATTERNS)
-def detect_xss_payload(text: str) -> bool:
-    return any(p.search(text) for p in XSS_PATTERNS)
-def safe_str(x: Any) -> Optional[str]:
-    if isinstance(x, (str, int, float, bool)):
-        return str(x)
-    if isinstance(x, bytes):
-        try:
-            return x.decode("utf-8", "strict")
-        except Exception:
-            return None
-    return None
 
 class Row:
     ...
@@ -175,7 +102,7 @@ class UserForm(Protocol):
     password: str | bytes
 
 class UserUpdateForm(Protocol):
-    user_id: int
+    #id lo consultamos manualmente
     username: str | None
     password: str | bytes | None
 
@@ -208,6 +135,17 @@ class StoragePointer:
     bucket: str
     object_key: str
 
+@dataclass(frozen=True)
+class FileMeta:
+    user_id: int
+    filename: str
+    privacy: str
+    ext: str
+    mime_type: str
+    size: int
+    bucket: str
+    object_key: str
+
 class SqlClient:
     pass
 
@@ -222,6 +160,7 @@ class TableSchema:
     name: str
     columns: Dict[str, str]
 
+
 @dataclass
 class DatabaseSchema:
     id: str
@@ -234,6 +173,7 @@ class DatabaseSchema:
         }
         serialized = json.dumps(structure, sort_keys=True)
         self.version = hashlib.sha256(serialized.encode()).hexdigest()
+
 
 @dataclass(frozen=True)
 class Session:
@@ -394,40 +334,75 @@ class Field:
     scanner: tuple | PayloadValidator | None = None
     default: object | None = None
 
-class SecurityLevel(Enum):
-    OPEN = 0
-    SAFE_TEXT = 1
-    USERNAME = 2
-    STRICT = 3
-    PARANOID = 4
+class Condition:
+    def __init__(self, column, operator=None, value=None, children=None, combiner=None):
+        self.column = column
+        self.operator = operator
+        self.value = value
+        self.children = children
+        self.combiner = combiner
+    # AND
+    def __and__(self, other):
+        return Condition(
+            column=None,
+            children=[self, other],
+            combiner="AND"
+        )
+    # OR
+    def __or__(self, other):
+        return Condition(
+            column=None,
+            children=[self, other],
+            combiner="OR"
+        )
 
-@dataclass(frozen=True)
-class Issue:
-    path: str
-    problem: str
-    severity: int = 1
-    char: str = ''
-    codepoint: str = ''
-    category: str = ''
-    count: int = 0
-    snippet: str = ''
-    extra: dict = field(default_factory=dict)
+class Column:
+    def __init__(self, table, name, dtype):
+        self.table = table
+        self.name = name
+        self.dtype = dtype
 
-@dataclass
-class ValidationResult:
-    valido: bool
-    severity_max: int
-    errores: List[str]
-    detalles: Dict[str, List[Issue]]
+    def __str__(self):
+        return f"{self.table.name}.{self.name}"
 
-class FrameworkAdapter:
-    def register_module(self, module, url_prefix: str, **kwargs):
-        raise NotImplementedError()
+    def __eq__(self, other):
+        return Condition(self, "=", other)
 
-@dataclass(frozen=True)
-class StrikeLevel:
-    id: int
-    name: str
-    limit: int
-    time_window: Optional[int] = None
-    callback: Optional[Callable[[Session, "StrikeLevel"], None]] = None
+    def __gt__(self, other):
+        return Condition(self, ">", other)
+
+    def __lt__(self, other):
+        return Condition(self, "<", other)
+
+    def __ge__(self, other):
+        return Condition(self, ">=", other)
+
+    def __le__(self, other):
+        return Condition(self, "<=", other)
+    
+def _build_single_condition(cond: Condition):
+    if cond.children:
+        child_sqls = []
+        child_params = []
+        for child in cond.children:
+            s, p = _build_single_condition(child)
+            child_sqls.append(s)
+            child_params.extend(p)
+        return f"({' {} '.format(cond.combiner).join(child_sqls)})", child_params
+    else:
+        col = cond.column
+        op = cond.operator
+        val = cond.value
+        if isinstance(val, Column):
+            return f"{col} {op} {val}", []
+        else:
+            return f"{col} {op} %s", [val]
+
+def build_conditions(conditions):
+    sql_parts = []
+    params = []
+    for cond in conditions:
+        part_sql, part_params = _build_single_condition(cond)
+        sql_parts.append(part_sql)
+        params.extend(part_params)
+    return " AND ".join(sql_parts), params

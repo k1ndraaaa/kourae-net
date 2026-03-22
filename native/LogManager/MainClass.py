@@ -1,9 +1,10 @@
-import logging, inspect, os
+import logging, inspect
 from pathlib import Path
 from typing import Optional
-from native.EnvLoader.MainClass import EnvLoader
-from native.TimeManager.MainClass import TimeManager
-from native.Library.commons import StrikeCounter, Session
+from adapters.EnvLoader.MainClass import EnvLoader, root_path
+from native.Library.time_manager import TimeManager
+from native.Library.strike_counter import StrikeCounter
+from native.Library.commons import Session
 from native.LogManager.Errors import LogManagerError
 from adapters.Telegram.MainClass import TelegramNotifier
 
@@ -11,10 +12,17 @@ LOG_INFO, LOG_ERROR, LOG_WARN, LOG_DEBUG = 0, 1, 2, 3
 log_types = ["info", "error", "warning", "debug"]
 
 class LogManager:
-    def __init__(self, config_path: Path, strike_counter: StrikeCounter):
-        self.env = EnvLoader().load_vars_from_env(config_path)
-        self.my_full_path = Path(f"/home/{os.environ['USER']}/")
-        self.strike_counter = strike_counter
+    def __init__(self):
+        mypath = Path(root_path / "native" / "LogManager")
+        
+        self.env = EnvLoader().load_vars_from_env(
+            path= Path(mypath / ".env")
+        )
+
+        self.my_full_path = mypath
+        
+        self.strike_counter =  StrikeCounter(levels=[])
+
         self.logger = logging.getLogger("LogManager")
         self.logger.setLevel(logging.INFO)
         log_file = self.my_full_path / "app.log"
@@ -31,6 +39,7 @@ class LogManager:
         self.logger.addHandler(file_handler_info)
         self.logger.addHandler(file_handler_error)
         self.telegram: Optional[TelegramNotifier] = None
+        
     def init_telegram(self):
         if self.telegram is None:
             self.telegram = TelegramNotifier()
@@ -43,8 +52,8 @@ class LogManager:
         return "unknown"
     def log(
         self,
-        level: int,
-        code: str,
+        level: int = 0,
+        code: str = "MAIN",
         *,
         message: Optional[str] = None,
         debug: Optional[str] = None,

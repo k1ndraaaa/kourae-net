@@ -1,6 +1,16 @@
 from collections import defaultdict
-from native.TimeManager.MainClass import TimeManager
-from native.Library.commons import Session, StrikeLevel
+from native.Library.time_manager import TimeManager
+from native.Library.commons import Session
+from typing import Optional, Callable
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class StrikeLevel:
+    id: int
+    name: str
+    limit: int
+    time_window: Optional[int] = None
+    callback: Optional[Callable[[Session, "StrikeLevel"], None]] = None
 
 class StrikeCounter:
     def __init__(self, levels: list[StrikeLevel]):

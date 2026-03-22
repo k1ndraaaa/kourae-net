@@ -1,4 +1,4 @@
-from native.EnvLoader.MainClass import *
+from adapters.EnvLoader.MainClass import *
 from adapters.Redis.Errors import *
 
 import redis

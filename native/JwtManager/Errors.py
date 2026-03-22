@@ -1,4 +1,4 @@
-from native.EnvLoader.Errors import BaseError
+from adapters.EnvLoader.Errors import BaseError
 
 class TokenError(BaseError): pass
 class TokenExpired(TokenError): pass

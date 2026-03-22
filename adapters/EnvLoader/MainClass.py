@@ -1,11 +1,10 @@
 #Componentes a usar
 from dotenv import load_dotenv, dotenv_values #type:ignore
-from native.EnvLoader.Errors import *
+from adapters.EnvLoader.Errors import *
 from pathlib import Path
 import os
-from native.Library.commons import FrameworkAdapter
 
-root_str_path = "../kourae-net/"
+root_str_path = "/home/kourae/Documents/kourae-net"
 root_path = Path(root_str_path)
 
 class EnvLoader:
